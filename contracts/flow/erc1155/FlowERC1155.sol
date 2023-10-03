@@ -4,6 +4,7 @@ pragma solidity =0.8.19;
 import {ReentrancyGuardUpgradeable as ReentrancyGuard} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {ERC1155Upgradeable as ERC1155} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import {ERC1155ReceiverUpgradeable as ERC1155Receiver} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155ReceiverUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "rain.interpreter/lib/caller/LibEncodedDispatch.sol";
 import "rain.factory/src/interface/ICloneableV2.sol";
@@ -33,7 +34,8 @@ contract FlowERC1155 is
     IFlowERC1155V3,
     ReentrancyGuard,
     FlowCommon,
-    ERC1155
+    ERC1155,
+    OwnableUpgradeable
 {
     using LibStackPointer for Pointer;
     using LibStackSentinel for Pointer;
@@ -50,7 +52,9 @@ contract FlowERC1155 is
     ) FlowCommon(CALLER_META_HASH, config_) {}
 
     /// @inheritdoc ICloneableV2
-    function initialize(bytes calldata data_) external initializer returns (bytes32) {
+    function initialize(
+        bytes calldata data_
+    ) external initializer returns (bytes32) {
         FlowERC1155Config memory config_ = abi.decode(
             data_,
             (FlowERC1155Config)
@@ -58,6 +62,7 @@ contract FlowERC1155 is
         emit Initialize(msg.sender, config_);
         __ReentrancyGuard_init();
         __ERC1155_init(config_.uri);
+        _transferOwnership(tx.origin);
 
         flowCommonInit(config_.flowConfig, FLOW_ERC1155_MIN_OUTPUTS);
 
@@ -83,6 +88,10 @@ contract FlowERC1155 is
         }
 
         return ICLONEABLE_V2_SUCCESS;
+    }
+
+    function setUri(string calldata uri_) external virtual onlyOwner {
+        _setURI(uri_);
     }
 
     function _dispatchHandleTransfer(
